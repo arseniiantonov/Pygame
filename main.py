@@ -6,7 +6,6 @@ import pygame
 
 pygame.init()
 
-
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 FPS = 60
@@ -37,9 +36,8 @@ class Block:
         self.color = color
         self.speed_x = 10
         self.falling = True
-        self.image = pygame.image.load("../PythonProject3/assets/block.png")
-        self.image = pygame.transform.scale(self.image,
-                                            (self.width, self.height))
+        self.image = pygame.image.load("assets/block.png")
+        self.image = pygame.transform.scale(self.image, (self.width, self.height))
 
     def draw(self):
         screen.blit(self.image, (self.x, self.y))
@@ -71,7 +69,6 @@ def load_results():
     return sorted(results, key=lambda x: x["score"], reverse=True)
 
 
-# Функция для графического ввода имени игрока
 def get_player_name():
     name = ""
     input_active = True
@@ -116,20 +113,43 @@ def draw_bonus_text(text, x, y, duration=1.0):
         pygame.display.flip()
 
 
-def play_game():
+def play_game(level=1):
     clock = pygame.time.Clock()
     running = True
     paused = False
     score = 0
+    start_time = pygame.time.get_ticks()
 
     blocks = []
-    current_block = Block(randint(0, SCREEN_WIDTH - 100), 50, 100, 30, COLORS[randint(0, len(COLORS) - 1)])
-    blocks.append(current_block)
     base_y = SCREEN_HEIGHT - 30
+
+    if level == 1:
+        fall_speed = 5
+        block_width = 100
+        block_height = 30
+    elif level == 2:
+        fall_speed = 10
+        block_width = 80
+        block_height = 25
+        time_limit = 60
+
+    current_block = Block(randint(0, SCREEN_WIDTH - block_width), 50, block_width, block_height,
+                          COLORS[randint(0, len(COLORS) - 1)])
+    blocks.append(current_block)
 
     while running:
         screen.fill(WHITE)
         keys = pygame.key.get_pressed()
+
+        if level == 2:
+            elapsed_time = (pygame.time.get_ticks() - start_time) // 1000
+            remaining_time = max(time_limit - elapsed_time, 0)
+            timer_text = font.render(f"Время: {remaining_time} сек", True, RED)
+            screen.blit(timer_text, (SCREEN_WIDTH - 200, 10))
+
+            if remaining_time <= 0:
+                running = False
+                break
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -142,43 +162,35 @@ def play_game():
                     paused = not paused
 
         if not paused:
-            # Движение текущего блока
             if keys[pygame.K_LEFT] or keys[pygame.K_a]:
                 current_block.move(-current_block.speed_x)
             if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
                 current_block.move(current_block.speed_x)
 
-            # Завершение игры, если блок выходит за границы экрана
-            if current_block.x < 0 or current_block.x + current_block.width > SCREEN_WIDTH:
-                running = False
-                break
-
-            # Падение текущего блока
             current_block.fall()
 
-            # Проверка, достиг ли блок основания или предыдущего блока
+            if level == 2 and randint(0, 10) > 8:
+                current_block.move(randint(-5, 5))
+
             if current_block.y + current_block.height >= base_y or (
                     len(blocks) > 1 and current_block.y + current_block.height >= blocks[-2].y
             ):
                 current_block.falling = False
 
-                # Проверка соприкосновения с предыдущим блоком
                 if len(blocks) > 1:
                     prev_block = blocks[-2]
                     if current_block.x + current_block.width < prev_block.x or current_block.x > prev_block.x + prev_block.width:
-                        # Игра заканчивается, если блок не соприкасается с предыдущим
                         running = False
                         break
 
-                # Проверка на точное размещение
                 if len(blocks) > 1 and abs(current_block.x - blocks[-2].x) <= 5:
-                    score += 20  # Бонус за точное размещение
+                    score += 20
                     draw_bonus_text("Бонус!", current_block.x + current_block.width // 2, current_block.y - 30)
                 else:
-                    score += 10  # Обычные очки
+                    score += 10
 
-                # Создание нового блока
-                current_block = Block(randint(0, SCREEN_WIDTH - 100), 50, 100, 30, COLORS[randint(0, len(COLORS) - 1)])
+                current_block = Block(randint(0, SCREEN_WIDTH - block_width), 50, block_width, block_height,
+                                      COLORS[randint(0, len(COLORS) - 1)])
                 blocks.append(current_block)
 
         for block in blocks:
@@ -221,12 +233,14 @@ def show_menu():
         screen.fill(WHITE)
         mouse_pos = pygame.mouse.get_pos()
 
-        if draw_button("Играть", 300, 200, 200, 50, GRAY, (150, 150, 150), mouse_pos, lambda: "level_select"):
+        if draw_button("Играть", 300, 200, 200, 50, GRAY, (150, 150, 150), mouse_pos):
             return "level_select"
-        if draw_button("Результаты", 300, 300, 200, 50, GRAY, (150, 150, 150), mouse_pos, lambda: "results"):
+
+        if draw_button("Результаты", 300, 300, 200, 50, GRAY, (150, 150, 150), mouse_pos):
             return "results"
-        if draw_button("Выход", 300, 400, 200, 50, GRAY, (150, 150, 150), mouse_pos, quit_game):
-            pass
+
+        if draw_button("Выход", 300, 400, 200, 50, GRAY, (150, 150, 150), mouse_pos):
+            quit_game()
 
         pygame.display.flip()
 
@@ -240,9 +254,10 @@ def show_level_select():
         screen.fill(WHITE)
         mouse_pos = pygame.mouse.get_pos()
 
-        if draw_button("1 Уровень", 300, 200, 200, 50, GRAY, (150, 150, 150), mouse_pos, lambda: "level_1"):
+        if draw_button("1 Уровень", 300, 200, 200, 50, GRAY, (150, 150, 150), mouse_pos):
             return "level_1"
-        if draw_button("2 Уровень", 300, 300, 200, 50, GRAY, (150, 150, 150), mouse_pos, lambda: "level_2"):
+
+        if draw_button("2 Уровень", 300, 300, 200, 50, GRAY, (150, 150, 150), mouse_pos):
             return "level_2"
 
         pygame.display.flip()
@@ -252,22 +267,31 @@ def show_level_select():
                 quit_game()
 
 
-def draw_button(text, x, y, width, height, color, hover_color, mouse_pos, action=None):
-    clicked = False
-    if x < mouse_pos[0] < x + width and y < mouse_pos[1] < y + height:
-        pygame.draw.rect(screen, hover_color, (x, y, width, height))
-        if pygame.mouse.get_pressed()[0]:  # Левая кнопка мыши нажата
-            clicked = True
-    else:
-        pygame.draw.rect(screen, color, (x, y, width, height))
+def play_level_2():
+    return 0
+
+
+def start_game(level):
+    score = play_game(level)
+    name = get_player_name()
+    save_result(name, score)
+
+
+def draw_button(text, x, y, width, height, color, hover_color, mouse_pos):
+    rect = pygame.Rect(x, y, width, height)
+    is_hovered = rect.collidepoint(mouse_pos)
+
+    pygame.draw.rect(screen, hover_color if is_hovered else color, rect)
 
     text_surf = font.render(text, True, BLACK)
     text_rect = text_surf.get_rect(center=(x + width // 2, y + height // 2))
     screen.blit(text_surf, text_rect)
 
-    if clicked and action:
-        return action()
-    return None
+    for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONUP and is_hovered:
+            return True
+
+    return False
 
 
 def quit_game():
@@ -281,7 +305,7 @@ def show_results():
     title_text = font.render("Результаты:", True, BLACK)
     screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
 
-    for i, result in enumerate(results[:10]):  # Ограничение на показ топ-10
+    for i, result in enumerate(results[:10]):
         result_text = font.render(f"{i + 1}. {result['name']} - {result['score']} очков", True, BLACK)
         screen.blit(result_text, (100, 100 + i * 40))
 
@@ -312,13 +336,13 @@ def main():
             current_screen = show_level_select()
 
         elif current_screen == "level_1":
-            score = play_game()
+            score = play_game(level=1)
             name = get_player_name()
             save_result(name, score)
             current_screen = "menu"
 
         elif current_screen == "level_2":
-            score = play_level_2()
+            score = play_game(level=2)
             name = get_player_name()
             save_result(name, score)
             current_screen = "menu"
@@ -335,3 +359,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
