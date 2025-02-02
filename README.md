@@ -23,5 +23,4 @@
 ### 1️⃣ **Склонируйте репозиторий**
 ```bash
 git clone https://github.com/arseniiantonov/Pygame
-cd Build-a-Tower
 
